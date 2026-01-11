@@ -5,8 +5,7 @@ import pandas as pd
 from datetime import date, timedelta
 import time
 import base64
-st.set_page_config(page_title="ארכיון הגאווה - שיבוץ משמרות", page_icon="🏳️‍🌈")
-# --- 1. עיצוב לימין (RTL) ---
+st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="logo.jpg", layout="centered")# --- 1. עיצוב לימין (RTL) ---
 st.markdown("""
     <style>
     .stApp { direction: rtl; text-align: right; }
@@ -159,3 +158,4 @@ try:
 except Exception as e:
 
     st.error("שגיאה בטעינת הנתונים.")
+
