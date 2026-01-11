@@ -116,7 +116,7 @@ try:
     st.subheader("הרשמה למשמרת 📝")
     st.write("בחרי תאריך בלוח השנה כדי לראות שעות פנויות:")
 
-    selected_date_obj = st.date_input("בחר תאריך:", value=date.today(), format="DD/MM/YYYY")
+    selected_date_obj = st.date_input("בחרי תאריך:", value=date.today(), format="DD/MM/YYYY")
     selected_date_str = selected_date_obj.strftime("%d/%m/%Y")
     daily_shifts = available_shifts[available_shifts["Date"] == selected_date_str]
 
@@ -158,4 +158,5 @@ try:
 except Exception as e:
 
     st.error("שגיאה בטעינת הנתונים.")
+
 
