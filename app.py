@@ -1,10 +1,11 @@
+
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import date, timedelta
 import time
 import base64
-
+st.set_page_config(page_title="ארכיון הגאווה - שיבוץ משמרות", page_icon="🏳️‍🌈")
 # --- 1. עיצוב לימין (RTL) ---
 st.markdown("""
     <style>
@@ -156,4 +157,5 @@ try:
         st.info(f'אין משמרות פנויות בתאריך {selected_date_str}.')
 
 except Exception as e:
+
     st.error("שגיאה בטעינת הנתונים.")
