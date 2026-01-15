@@ -13,7 +13,6 @@ st.markdown("""
     h1, h2, h3, p, div, label, input, span { text-align: right !important; }
     .stButton button { width: 100%; border-radius: 10px; }
     div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
-    /* הסתרת התפריט העליון של סטרימליט למראה נקי יותר */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -28,36 +27,68 @@ def get_worksheet():
     )
     client = gspread.authorize(credentials)
     
-    # --- שימי לב: וודאי שזה השם המדויק של הקובץ שלך בגוגל דרייב ---
-    # אם לקובץ קוראים אחרת, תשני את השם בתוך הגרשיים למטה:
-    return client.open("Pride Archive").sheet1 
+    # --- שימי לב! כאן את מדביקה את הקישור ---
+    # תחליפי את מה שבתוך הגרשיים בקישור המלא של הגיליון שלך
+    spreadsheet_url = "import streamlit as st
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime, date
+
+# --- 1. הגדרות דף ---
+st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
+
+# עיצוב לימין (RTL)
+st.markdown("""
+<style>
+    .stApp { direction: rtl; text-align: right; }
+    h1, h2, h3, p, div, label, input, span { text-align: right !important; }
+    .stButton button { width: 100%; border-radius: 10px; }
+    div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
+# --- 2. חיבור לגוגל שיטס ---
+def get_worksheet():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(credentials)
+    
+    # --- שימי לב! כאן את מדביקה את הקישור ---
+    # תחליפי את מה שבתוך הגרשיים בקישור המלא של הגיליון שלך
+    spreadsheet_url = "תדביקי_כאן_את_הקישור_המלא_של_הגוגל_שיטס"
+    
+    return client.open_by_url(spreadsheet_url).sheet1
 
 # --- 3. פונקציה לרישום מתנדב ---
 def register_volunteer(row_index, name, phone, email):
     try:
         sh = get_worksheet()
-        # חישוב השורה האמיתית בגיליון (אינדקס + 2 בגלל כותרות)
-        actual_row = row_index + 2
+        actual_row = row_index + 2  # המרה למספר שורה אמיתי בגיליון
         
-        # עדכון עמודות D, E, F
-        sh.update_cell(actual_row, 4, name)   # Volunteer
-        sh.update_cell(actual_row, 5, phone)  # Phone
-        sh.update_cell(actual_row, 6, email)  # Email
+        # עדכון העמודות (D=4, E=5, F=6)
+        sh.update_cell(actual_row, 4, name)
+        sh.update_cell(actual_row, 5, phone)
+        sh.update_cell(actual_row, 6, email)
         
         st.balloons()
         st.success(f"תודה {name}! נרשמת בהצלחה למשמרת. 🎉")
-        st.rerun() # רענון הדף כדי להראות שהמשמרת נתפסה
+        st.rerun()
         
     except Exception as e:
         st.error(f"אירעה שגיאה בשמירה: {e}")
 
 # --- 4. הממשק הראשי ---
 def main():
-    # הצגת לוגו (אם הקובץ קיים)
+    # לוגו
     try:
         st.image("logo.jpg", width=150)
     except:
-        pass # אם אין לוגו, פשוט ממשיכים
+        pass
         
     st.title("לוח משמרות - ארכיון הגאווה 🏳️‍🌈")
     st.write("כאן תוכלו לראות את המשמרות הפנויות הקרובות ולהירשם.")
@@ -67,53 +98,40 @@ def main():
         sh = get_worksheet()
         data = sh.get_all_records()
 
-        # סינון: רק משמרות עתידיות
+        # סינון משמרות עתידיות
         future_shifts = []
         
         for i, row in enumerate(data):
             date_str = str(row['Date'])
-            
-            # דילוג על שורות ריקות
-            if not date_str or date_str == "":
-                continue
+            if not date_str: continue
 
             try:
-                # המרת תאריך מפורמט יום/חודש/שנה
+                # המרת תאריך (יום/חודש/שנה)
                 shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                
-                # אם התאריך הוא היום או בעתיד -> נוסיף אותו לרשימה
                 if shift_date >= date.today():
                     future_shifts.append((i, row, shift_date))
             except ValueError:
-                # אם התאריך לא כתוב נכון בגיליון, נתעלם מהשורה הזו
                 continue
 
-        # אם אין משמרות עתידיות
         if not future_shifts:
             st.info("כרגע לא פורסמו משמרות חדשות. שווה לחזור ולהתעדכן בקרוב! ❤️")
 
-        # הצגת המשמרות שנמצאו
+        # הצגת המשמרות
         for original_index, row, shift_date in future_shifts:
-            
             day_name = row['Day']
             time_range = row['Time']
             volunteer = str(row['Volunteer'])
             
-            # כותרת יפה למשמרת
             date_display = shift_date.strftime("%d/%m/%Y")
             header_text = f"📅 {day_name} {date_display} | ⏰ {time_range}"
             
-            # בדיקה אם המשמרת תפוסה (אם יש טקסט בעמודת המתנדב)
             is_taken = len(volunteer) > 1
             
-            # אייקון למצב המשמרת
-            status_icon = "✅" if is_taken else "ww"
             if is_taken:
                 expander_title = f"🔒 {header_text} (תפוס)"
             else:
                 expander_title = f"🟢 {header_text} (פנוי)"
 
-            # יצירת התיבה הנפתחת
             with st.expander(expander_title, expanded=not is_taken):
                 if is_taken:
                     st.write(f"**מאויש על ידי:** {volunteer}")
@@ -133,8 +151,103 @@ def main():
                                 st.error("חובה למלא שם מלא.")
 
     except Exception as e:
-        st.error("לא הצלחנו להתחבר לטבלה. אנא ודאו ששם הקובץ בקוד תואם לשם בגוגל דרייב.")
-        # st.error(e) # להדליק אם צריך לראות שגיאה טכנית
+        st.warning("עדיין לא הגדרת את הקישור לגיליון בקוד, או שלא שיתפת את המייל של הרובוט.")
+        # st.error(f"שגיאה טכנית: {e}") # אפשר להדליק אם צריך לראות את השגיאה
+
+if __name__ == "__main__":
+    main()"
+    
+    return client.open_by_url(spreadsheet_url).sheet1
+
+# --- 3. פונקציה לרישום מתנדב ---
+def register_volunteer(row_index, name, phone, email):
+    try:
+        sh = get_worksheet()
+        actual_row = row_index + 2  # המרה למספר שורה אמיתי בגיליון
+        
+        # עדכון העמודות (D=4, E=5, F=6)
+        sh.update_cell(actual_row, 4, name)
+        sh.update_cell(actual_row, 5, phone)
+        sh.update_cell(actual_row, 6, email)
+        
+        st.balloons()
+        st.success(f"תודה {name}! נרשמת בהצלחה למשמרת. 🎉")
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"אירעה שגיאה בשמירה: {e}")
+
+# --- 4. הממשק הראשי ---
+def main():
+    # לוגו
+    try:
+        st.image("logo.jpg", width=150)
+    except:
+        pass
+        
+    st.title("לוח משמרות - ארכיון הגאווה 🏳️‍🌈")
+    st.write("כאן תוכלו לראות את המשמרות הפנויות הקרובות ולהירשם.")
+    st.write("---")
+
+    try:
+        sh = get_worksheet()
+        data = sh.get_all_records()
+
+        # סינון משמרות עתידיות
+        future_shifts = []
+        
+        for i, row in enumerate(data):
+            date_str = str(row['Date'])
+            if not date_str: continue
+
+            try:
+                # המרת תאריך (יום/חודש/שנה)
+                shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                if shift_date >= date.today():
+                    future_shifts.append((i, row, shift_date))
+            except ValueError:
+                continue
+
+        if not future_shifts:
+            st.info("כרגע לא פורסמו משמרות חדשות. שווה לחזור ולהתעדכן בקרוב! ❤️")
+
+        # הצגת המשמרות
+        for original_index, row, shift_date in future_shifts:
+            day_name = row['Day']
+            time_range = row['Time']
+            volunteer = str(row['Volunteer'])
+            
+            date_display = shift_date.strftime("%d/%m/%Y")
+            header_text = f"📅 {day_name} {date_display} | ⏰ {time_range}"
+            
+            is_taken = len(volunteer) > 1
+            
+            if is_taken:
+                expander_title = f"🔒 {header_text} (תפוס)"
+            else:
+                expander_title = f"🟢 {header_text} (פנוי)"
+
+            with st.expander(expander_title, expanded=not is_taken):
+                if is_taken:
+                    st.write(f"**מאויש על ידי:** {volunteer}")
+                else:
+                    st.markdown("### הרשמה למשמרת 👇")
+                    with st.form(key=f"form_{original_index}"):
+                        name = st.text_input("שם מלא (חובה)")
+                        phone = st.text_input("טלפון")
+                        email = st.text_input("אימייל")
+                        
+                        submit = st.form_submit_button("שריינו לי את המשמרת!")
+                        
+                        if submit:
+                            if name:
+                                register_volunteer(original_index, name, phone, email)
+                            else:
+                                st.error("חובה למלא שם מלא.")
+
+    except Exception as e:
+        st.warning("עדיין לא הגדרת את הקישור לגיליון בקוד, או שלא שיתפת את המייל של הרובוט.")
+        # st.error(f"שגיאה טכנית: {e}") # אפשר להדליק אם צריך לראות את השגיאה
 
 if __name__ == "__main__":
     main()
