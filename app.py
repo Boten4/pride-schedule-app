@@ -15,22 +15,21 @@ st.markdown("""
     /* יישור כל הטקסטים, הכותרות והתוויות לימין */
     h1, h2, h3, p, div, label, span { text-align: right !important; }
     
-    /* עיצוב ספציפי לתיבת התאריך כדי שתהיה מימין לשמאל */
+    /* עיצוב ספציפי לתיבת התאריך */
     .stDateInput input {
         text-align: right !important;
         direction: rtl !important;
     }
     
-    /* הזזת האייקון של לוח השנה לצד שמאל (כדי שלא יסתיר את הטקסט בעברית) */
+    /* הזזת האייקון של לוח השנה לצד שמאל */
     div[data-baseweb="input"] > div {
         flex-direction: row-reverse;
     }
 
-    /* עיצוב הכפתורים והמסגרות */
+    /* כפתורים ומסגרות */
     .stButton button { width: 100%; border-radius: 8px; }
     div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
     
-    /* הסתרת תפריטים מיותרים */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -75,69 +74,11 @@ def main():
         pass
         
     st.title("לוח משמרות 🏳️‍🌈")
-    st.write("בחרו תאריך בלוח השנה כדי לראות את המשמרות:")
+    st.write("בחרו תאריך כדי לראות את המשמרות:")
     
-    # --- רכיב לוח השנה ---
-    # הוספתי help כדי שיהיה ברור
+    # --- השינוי כאן: הוספנו פורמט יום/חודש/שנה ---
     selected_date = st.date_input(
-        "📅 לחצו כאן לבחירת תאריך",
-        value=date.today()
+        "📅 לחצו לבחירת תאריך",
+        value=date.today(),
+        format="DD/MM/YYYY"  # <-- זה מסדר את המספרים יפה
     )
-    st.write("---")
-
-    try:
-        sh = get_worksheet()
-        data = sh.get_all_records()
-
-        daily_shifts = []
-        
-        for i, row in enumerate(data):
-            date_str = str(row['Date'])
-            if not date_str: continue
-
-            try:
-                shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                if shift_date == selected_date:
-                    daily_shifts.append((i, row))
-            except ValueError:
-                continue
-
-        # --- תצוגת התוצאות ---
-        if not daily_shifts:
-            st.info(f"לא נמצאו משמרות בתאריך {selected_date.strftime('%d/%m/%Y')}. נסו תאריך אחר!")
-        else:
-            st.success(f"נמצאו {len(daily_shifts)} משמרות לתאריך הזה:")
-            
-            for original_index, row in daily_shifts:
-                time_range = row['Time']
-                volunteer = str(row['Volunteer'])
-                
-                is_taken = len(volunteer) > 1
-                
-                if is_taken:
-                    header = f"🔒 בשעה {time_range} (תפוס)"
-                else:
-                    header = f"🟢 בשעה {time_range} (פנוי להרשמה)"
-                
-                with st.expander(header, expanded=not is_taken):
-                    if is_taken:
-                        st.write(f"**מתנדב/ת:** {volunteer}")
-                        st.caption("המשמרת הזו כבר מלאה.")
-                    else:
-                        st.markdown(f"### הרשמה לשעה {time_range} 👇")
-                        with st.form(key=f"form_{original_index}"):
-                            name = st.text_input("שם מלא", placeholder="חובה למלא")
-                            phone = st.text_input("טלפון")
-                            email = st.text_input("מייל")
-                            
-                            if st.form_submit_button("שריינו לי את המשמרת!"):
-                                if name:
-                                    register_volunteer(original_index, name, phone, email)
-                                else:
-                                    st.error("נא למלא שם מלא")
-
-    except Exception as e:
-        st.error("שגיאה בחיבור לנתונים. ודאו שה-Secrets מוגדרים נכון.")
-
-if __name__ == "__main__":
-    main()
