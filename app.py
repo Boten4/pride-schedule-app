@@ -1,162 +1,140 @@
-
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
-from datetime import date, timedelta
-import time
-import base64
-st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="logo.jpg", layout="centered")# --- 1. עיצוב לימין (RTL) ---
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime, date
+
+# --- 1. הגדרות דף ---
+st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
+
+# עיצוב לימין (RTL)
 st.markdown("""
-    <style>
+<style>
     .stApp { direction: rtl; text-align: right; }
-    .stMarkdown, .stButton, .stSelectbox, .stTextInput, .stDateInput, .stImage {
-        direction: rtl; text-align: right;
-    }
-    h1, h2, h3, p { text-align: right; }
-    input { text-align: right; }
-    label { direction: rtl; text-align: right; width: 100%; }
-    div[data-testid="stImage"] > img {
-        display: block; margin-left: auto; margin-right: 0;
-    }
-    </style>
+    h1, h2, h3, p, div, label, input, span { text-align: right !important; }
+    .stButton button { width: 100%; border-radius: 10px; }
+    div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
+    /* הסתרת התפריט העליון של סטרימליט למראה נקי יותר */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+</style>
 """, unsafe_allow_html=True)
 
-# --- פונקציה מיוחדת להצגת וידאו כאפקט (Overlay) ---
-def show_video_overlay(file_path):
+# --- 2. חיבור לגוגל שיטס ---
+def get_worksheet():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(credentials)
+    
+    # --- שימי לב: וודאי שזה השם המדויק של הקובץ שלך בגוגל דרייב ---
+    # אם לקובץ קוראים אחרת, תשני את השם בתוך הגרשיים למטה:
+    return client.open("Pride Archive").sheet1 
+
+# --- 3. פונקציה לרישום מתנדב ---
+def register_volunteer(row_index, name, phone, email):
     try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-        bin_str = base64.b64encode(data).decode()
+        sh = get_worksheet()
+        # חישוב השורה האמיתית בגיליון (אינדקס + 2 בגלל כותרות)
+        actual_row = row_index + 2
         
-        # קוד HTML שמציג את הוידאו על כל המסך
-        video_html = f"""
-            <style>
-            .overlay-video {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                z-index: 999999;
-                object-fit: cover;
-                opacity: 0.9;
-                pointer-events: none;
-                mix-blend-mode: multiply;
-            }}
-            </style>
-            <video class="overlay-video" autoplay muted playsinline>
-                <source src="data:video/mp4;base64,{bin_str}" type="video/mp4">
-            </video>
-        """
-        st.markdown(video_html, unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.warning(f"לא נמצא הקובץ {file_path}")
-
-# --- 2. הגדרות קבועות ---
-hebrew_days = {
-    6: "ראשון", 0: "שני", 1: "שלישי", 2: "רביעי", 3: "חמישי"
-}
-
-shifts_hours = ["09:00-12:00", "12:00-15:00"]
-
-# --- 3. לוגו וכותרת ---
-try:
-    st.image("logo.jpg", use_container_width=True)
-except:
-    st.warning("לא נמצא קובץ לוגו בשם logo.jpg")
-
-st.markdown("<h2 style='text-align: right; direction: rtl;'>שיבוץ להתנדבות בארכיון הגאווה הישראלי</h2>", unsafe_allow_html=True)
-
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# --- 4. אזור ניהול (מוגן בסיסמה) ---
-with st.expander("🔒 כניסה למנהלים (יצירת משמרות)"):
-    # כאן הוספנו את בקשת הסיסמה
-    admin_password = st.text_input("הזן סיסמת מנהל כדי לפתוח את האפשרויות:", type="password")
-    
-    # בדיקת הסיסמה (כרגע מוגדרת כ-archive2026)
-    if admin_password == "archive2026":
-        st.success("הגישה אושרה ✅")
-        st.write("לחץ כאן רק בתחילת חודש כדי לייצר את המשמרות.")
-        if st.button("צר משמרות אוטומטית לחודש הקרוב"):
-            today = date.today()
-            new_data = []
-            for i in range(30):
-                current_date = today + timedelta(days=i)
-                if current_date.weekday() in [4, 5]: continue
-                wd = current_date.weekday()
-                if wd in hebrew_days:
-                    day_name = hebrew_days[wd]
-                    for h in shifts_hours:
-                        new_data.append({
-                            "Date": current_date.strftime("%d/%m/%Y"),
-                            "Day": day_name, "Time": h,
-                            "Volunteer": "", "Phone": "", "Email": ""
-                        })
-            if new_data:
-                df_new = pd.DataFrame(new_data)
-                conn.update(worksheet="Sheet1", data=df_new)
-                st.success(f"נוצרו {len(df_new)} משמרות!")
-                time.sleep(1)
-                st.rerun()
-    elif admin_password:
-        st.error("סיסמה שגויה ❌")
-
-st.divider()
-
-# --- 5. אזור הרשמה ---
-try:
-    df = conn.read(worksheet="Sheet1", ttl=0).fillna("")
-    
-    if "Phone" not in df.columns: df["Phone"] = ""
-    if "Email" not in df.columns: df["Email"] = ""
-    
-    available_shifts = df[df["Volunteer"] == ""].copy()
-
-    st.subheader("הרשמה למשמרת 📝")
-    st.write("בחרי תאריך בלוח השנה כדי לראות שעות פנויות:")
-
-    selected_date_obj = st.date_input("בחרי תאריך:", value=date.today(), format="DD/MM/YYYY")
-    selected_date_str = selected_date_obj.strftime("%d/%m/%Y")
-    daily_shifts = available_shifts[available_shifts["Date"] == selected_date_str]
-
-    if not daily_shifts.empty:
-        st.success(f"נמצאו משמרות פנויות ליום {daily_shifts.iloc[0]['Day']} ({selected_date_str})!")
+        # עדכון עמודות D, E, F
+        sh.update_cell(actual_row, 4, name)   # Volunteer
+        sh.update_cell(actual_row, 5, phone)  # Phone
+        sh.update_cell(actual_row, 6, email)  # Email
         
-        with st.form("signup_form"):
-            selected_time = st.selectbox("בחרי שעה רצויה:", daily_shifts["Time"])
-            volunteer_name = st.text_input("שם מלא:")
-            volunteer_phone = st.text_input("מספר טלפון:")
-            volunteer_email = st.text_input("כתובת אימייל:")
+        st.balloons()
+        st.success(f"תודה {name}! נרשמת בהצלחה למשמרת. 🎉")
+        st.rerun() # רענון הדף כדי להראות שהמשמרת נתפסה
+        
+    except Exception as e:
+        st.error(f"אירעה שגיאה בשמירה: {e}")
+
+# --- 4. הממשק הראשי ---
+def main():
+    # הצגת לוגו (אם הקובץ קיים)
+    try:
+        st.image("logo.jpg", width=150)
+    except:
+        pass # אם אין לוגו, פשוט ממשיכים
+        
+    st.title("לוח משמרות - ארכיון הגאווה 🏳️‍🌈")
+    st.write("כאן תוכלו לראות את המשמרות הפנויות הקרובות ולהירשם.")
+    st.write("---")
+
+    try:
+        sh = get_worksheet()
+        data = sh.get_all_records()
+
+        # סינון: רק משמרות עתידיות
+        future_shifts = []
+        
+        for i, row in enumerate(data):
+            date_str = str(row['Date'])
             
-            submitted = st.form_submit_button("שבצי אותי למשמרת! ✅")
+            # דילוג על שורות ריקות
+            if not date_str or date_str == "":
+                continue
 
-            if submitted:
-                if volunteer_name and volunteer_phone:
-                    mask = (df["Date"] == selected_date_str) & (df["Time"] == selected_time)
-                    
-                    if not df[mask].empty and df.loc[mask, "Volunteer"].iloc[0] == "":
-                        row_index = df[mask].index[0]
-                        df.at[row_index, "Volunteer"] = volunteer_name
-                        df.at[row_index, "Phone"] = volunteer_phone
-                        df.at[row_index, "Email"] = volunteer_email
-                        conn.update(worksheet="Sheet1", data=df)
-                        
-                        st.success(f"תודה {volunteer_name}! נרשמת בהצלחה.")
-                        
-                        show_video_overlay("lines.mp4")
-                        time.sleep(8)
-                        
-                        st.rerun()
-                    else:
-                        st.error("אופס! המשמרת הזו נתפסה.")
+            try:
+                # המרת תאריך מפורמט יום/חודש/שנה
+                shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                
+                # אם התאריך הוא היום או בעתיד -> נוסיף אותו לרשימה
+                if shift_date >= date.today():
+                    future_shifts.append((i, row, shift_date))
+            except ValueError:
+                # אם התאריך לא כתוב נכון בגיליון, נתעלם מהשורה הזו
+                continue
+
+        # אם אין משמרות עתידיות
+        if not future_shifts:
+            st.info("כרגע לא פורסמו משמרות חדשות. שווה לחזור ולהתעדכן בקרוב! ❤️")
+
+        # הצגת המשמרות שנמצאו
+        for original_index, row, shift_date in future_shifts:
+            
+            day_name = row['Day']
+            time_range = row['Time']
+            volunteer = str(row['Volunteer'])
+            
+            # כותרת יפה למשמרת
+            date_display = shift_date.strftime("%d/%m/%Y")
+            header_text = f"📅 {day_name} {date_display} | ⏰ {time_range}"
+            
+            # בדיקה אם המשמרת תפוסה (אם יש טקסט בעמודת המתנדב)
+            is_taken = len(volunteer) > 1
+            
+            # אייקון למצב המשמרת
+            status_icon = "✅" if is_taken else "ww"
+            if is_taken:
+                expander_title = f"🔒 {header_text} (תפוס)"
+            else:
+                expander_title = f"🟢 {header_text} (פנוי)"
+
+            # יצירת התיבה הנפתחת
+            with st.expander(expander_title, expanded=not is_taken):
+                if is_taken:
+                    st.write(f"**מאויש על ידי:** {volunteer}")
                 else:
-                    st.warning("חובה למלא שם וטלפון.")
-    else:
-        st.info(f'אין משמרות פנויות בתאריך {selected_date_str}.')
+                    st.markdown("### הרשמה למשמרת 👇")
+                    with st.form(key=f"form_{original_index}"):
+                        name = st.text_input("שם מלא (חובה)")
+                        phone = st.text_input("טלפון")
+                        email = st.text_input("אימייל")
+                        
+                        submit = st.form_submit_button("שריינו לי את המשמרת!")
+                        
+                        if submit:
+                            if name:
+                                register_volunteer(original_index, name, phone, email)
+                            else:
+                                st.error("חובה למלא שם מלא.")
 
-except Exception as e:
+    except Exception as e:
+        st.error("לא הצלחנו להתחבר לטבלה. אנא ודאו ששם הקובץ בקוד תואם לשם בגוגל דרייב.")
+        # st.error(e) # להדליק אם צריך לראות שגיאה טכנית
 
-    st.error("שגיאה בטעינת הנתונים.")
-
-
+if __name__ == "__main__":
+    main()
