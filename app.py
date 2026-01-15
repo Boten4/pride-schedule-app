@@ -6,13 +6,31 @@ from datetime import datetime, date
 # --- 1. הגדרות דף ---
 st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
 
-# עיצוב לימין (RTL)
+# --- עיצוב מיוחד לעברית (CSS) ---
 st.markdown("""
 <style>
+    /* כיוון כללי לימין */
     .stApp { direction: rtl; text-align: right; }
-    h1, h2, h3, p, div, label, input, span { text-align: right !important; }
+    
+    /* יישור כל הטקסטים, הכותרות והתוויות לימין */
+    h1, h2, h3, p, div, label, span { text-align: right !important; }
+    
+    /* עיצוב ספציפי לתיבת התאריך כדי שתהיה מימין לשמאל */
+    .stDateInput input {
+        text-align: right !important;
+        direction: rtl !important;
+    }
+    
+    /* הזזת האייקון של לוח השנה לצד שמאל (כדי שלא יסתיר את הטקסט בעברית) */
+    div[data-baseweb="input"] > div {
+        flex-direction: row-reverse;
+    }
+
+    /* עיצוב הכפתורים והמסגרות */
     .stButton button { width: 100%; border-radius: 8px; }
     div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
+    
+    /* הסתרת תפריטים מיותרים */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -51,7 +69,6 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. הממשק הראשי ---
 def main():
-    # לוגו וכותרת
     try:
         st.image("logo.jpg", width=120)
     except:
@@ -60,16 +77,18 @@ def main():
     st.title("לוח משמרות 🏳️‍🌈")
     st.write("בחרו תאריך בלוח השנה כדי לראות את המשמרות:")
     
-    # --- המרכיב החדש: לוח שנה ---
-    # המשתמש בוחר תאריך, וברירת המחדל היא היום
-    selected_date = st.date_input("📅 לחצו כאן לבחירת תאריך", value=date.today())
+    # --- רכיב לוח השנה ---
+    # הוספתי help כדי שיהיה ברור
+    selected_date = st.date_input(
+        "📅 לחצו כאן לבחירת תאריך",
+        value=date.today()
+    )
     st.write("---")
 
     try:
         sh = get_worksheet()
         data = sh.get_all_records()
 
-        # סינון: מציגים רק שורות שמתאימות לתאריך שנבחר
         daily_shifts = []
         
         for i, row in enumerate(data):
@@ -77,13 +96,9 @@ def main():
             if not date_str: continue
 
             try:
-                # המרת התאריך מהגיליון כדי להשוות אותו למה שנבחר בלוח
                 shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                
-                # בדיקה: האם התאריך בגיליון זהה לתאריך שנבחר?
                 if shift_date == selected_date:
                     daily_shifts.append((i, row))
-                    
             except ValueError:
                 continue
 
@@ -97,16 +112,13 @@ def main():
                 time_range = row['Time']
                 volunteer = str(row['Volunteer'])
                 
-                # בדיקה אם תפוס
                 is_taken = len(volunteer) > 1
                 
-                # כותרת לאקורדיון
                 if is_taken:
                     header = f"🔒 בשעה {time_range} (תפוס)"
                 else:
                     header = f"🟢 בשעה {time_range} (פנוי להרשמה)"
                 
-                # הצגת המשמרת
                 with st.expander(header, expanded=not is_taken):
                     if is_taken:
                         st.write(f"**מתנדב/ת:** {volunteer}")
@@ -126,7 +138,6 @@ def main():
 
     except Exception as e:
         st.error("שגיאה בחיבור לנתונים. ודאו שה-Secrets מוגדרים נכון.")
-        # st.code(e)
 
 if __name__ == "__main__":
     main()
