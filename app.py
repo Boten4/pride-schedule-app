@@ -4,15 +4,24 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, date
 
 # --- 1. הגדרות דף ---
-st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
+st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="wide")
 
-# עיצוב לימין (RTL)
+# עיצוב לימין (RTL) וכרטיסיות יפות
 st.markdown("""
 <style>
     .stApp { direction: rtl; text-align: right; }
     h1, h2, h3, p, div, label, input, span { text-align: right !important; }
-    .stButton button { width: 100%; border-radius: 10px; }
-    div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
+    .stButton button { width: 100%; border-radius: 8px; font-weight: bold; }
+    
+    /* עיצוב הכרטיסייה */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
+    
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -27,7 +36,7 @@ def get_worksheet():
     )
     client = gspread.authorize(credentials)
     
-    # הקישור הישיר לקובץ שלך
+    # הקישור הישיר שלך
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1UQQ5oqpMMiQPnJF0q2i-pUnl4jJxhpzJc2g-P2mxFCQ/edit?gid=0#gid=0"
     
     return client.open_by_url(spreadsheet_url).sheet1
@@ -43,7 +52,7 @@ def register_volunteer(row_index, name, phone, email):
         sh.update_cell(actual_row, 6, email)
         
         st.balloons()
-        st.success(f"תודה {name}! נרשמת בהצלחה למשמרת. 🎉")
+        st.success(f"תודה {name}! נרשמת בהצלחה. 🎉")
         st.rerun()
         
     except Exception as e:
@@ -51,31 +60,18 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. הממשק הראשי ---
 def main():
-    try:
-        st.image("logo.jpg", width=150)
-    except:
-        pass
-        
-    st.title("לוח משמרות - ארכיון הגאווה 🏳️‍🌈")
+    # כותרת
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.title("🏳️‍🌈 לוח משמרות")
+        st.write("בחרו כרטיסייה והירשמו למשמרת:")
     st.write("---")
 
-    # --- בדיקת חיבור ---
     try:
-        # בדיקה 1: הצגת המייל של הרובוט
-        try:
-            robot_email = st.secrets["gcp_service_account"]["client_email"]
-            st.info(f"🤖 הרובוט מתחבר עם המייל:\n\n`{robot_email}`")
-            st.caption("👆 תוודאי שהמייל הזה מוגדר כ-Editor בגוגל שיטס!")
-        except:
-            st.error("❌ לא הצלחנו לקרוא את המייל מה-Secrets.")
-
-        # ניסיון טעינת טבלה
         sh = get_worksheet()
         data = sh.get_all_records()
 
-        # אם הגענו לפה - החיבור הצליח!
-        st.success("✅ החיבור הצליח! הטבלה נטענה.")
-
+        # סינון ומיון משמרות עתידיות
         future_shifts = []
         for i, row in enumerate(data):
             date_str = str(row['Date'])
@@ -86,41 +82,58 @@ def main():
                     future_shifts.append((i, row, shift_date))
             except ValueError:
                 continue
+        
+        # מיון לפי תאריך (שהכי קרוב יופיע ראשון)
+        future_shifts.sort(key=lambda x: x[2])
 
         if not future_shifts:
-            st.info("כרגע לא פורסמו משמרות חדשות.")
-
-        for original_index, row, shift_date in future_shifts:
-            day_name = row['Day']
-            time_range = row['Time']
-            volunteer = str(row['Volunteer'])
-            date_display = shift_date.strftime("%d/%m/%Y")
-            header_text = f"📅 {day_name} {date_display} | ⏰ {time_range}"
+            st.info("אין כרגע משמרות פנויות. חזרו בקרוב! ❤️")
+        
+        # --- תצוגת הגריד (לוח שנה) ---
+        # אנחנו יוצרים שורות של 3 כרטיסים בכל שורה
+        cols_per_row = 3
+        cols = st.columns(cols_per_row)
+        
+        for idx, (original_index, row, shift_date) in enumerate(future_shifts):
+            # בחירת העמודה הנכונה (0, 1 או 2)
+            current_col = cols[idx % cols_per_row]
             
-            is_taken = len(volunteer) > 1
-            if is_taken:
-                expander_title = f"🔒 {header_text} (תפוס)"
-            else:
-                expander_title = f"🟢 {header_text} (פנוי)"
-
-            with st.expander(expander_title, expanded=not is_taken):
-                if is_taken:
-                    st.write(f"**מאויש על ידי:** {volunteer}")
-                else:
-                    with st.form(key=f"form_{original_index}"):
-                        name = st.text_input("שם מלא (חובה)")
-                        phone = st.text_input("טלפון")
-                        email = st.text_input("אימייל")
-                        submit = st.form_submit_button("שריינו לי את המשמרת!")
-                        if submit:
-                            if name:
-                                register_volunteer(original_index, name, phone, email)
-                            else:
-                                st.error("חובה למלא שם מלא.")
+            with current_col:
+                # מסגרת לכל משמרת
+                with st.container(border=True):
+                    day_name = row['Day']
+                    time_range = row['Time']
+                    volunteer = str(row['Volunteer'])
+                    date_display = shift_date.strftime("%d/%m/%Y")
+                    
+                    # כותרת הכרטיס
+                    st.markdown(f"### 📅 {day_name}")
+                    st.markdown(f"**{date_display}**")
+                    st.markdown(f"⏰ {time_range}")
+                    
+                    is_taken = len(volunteer) > 1
+                    
+                    st.write("---")
+                    
+                    if is_taken:
+                        st.warning(f"🔒 **תפוס ע\"י:**\n{volunteer}")
+                    else:
+                        st.markdown("🟢 **פנוי להרשמה**")
+                        # טופס הרשמה קטן בתוך הכרטיס
+                        with st.form(key=f"card_form_{original_index}"):
+                            name = st.text_input("שם מלא", placeholder="חובה למלא")
+                            phone = st.text_input("טלפון")
+                            email = st.text_input("מייל")
+                            
+                            if st.form_submit_button("אני בא/ה! ✋"):
+                                if name:
+                                    register_volunteer(original_index, name, phone, email)
+                                else:
+                                    st.error("חסר שם")
 
     except Exception as e:
-        st.error("🚨 שגיאה טכנית בחיבור:")
-        st.code(e) 
+        st.error("שגיאת התחברות לטבלה. בדקו את ה-Secrets.")
+        # st.code(e)
 
 if __name__ == "__main__":
     main()
