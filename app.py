@@ -50,7 +50,7 @@ def register_volunteer(row_index, name, phone, email):
     except Exception as e:
         st.error(f"אירעה שגיאה בשמירה: {e}")
 
-# --- 4. הממשק הראשי ---
+# --- 4. הממשק הראשי (גרסת בדיקה) ---
 def main():
     # לוגו
     try:
@@ -59,22 +59,30 @@ def main():
         pass
         
     st.title("לוח משמרות - ארכיון הגאווה 🏳️‍🌈")
-    st.write("כאן תוכלו לראות את המשמרות הפנויות הקרובות ולהירשם.")
     st.write("---")
 
+    # --- בדיקת חיבור ---
     try:
+        # בדיקה 1: הדפסת המייל של הרובוט
+        try:
+            robot_email = st.secrets["gcp_service_account"]["client_email"]
+            st.info(f"🤖 הרובוט מנסה להתחבר עם המייל: \n\n `{robot_email}`")
+            st.write("👆 וודאי שהמייל הזה נמצא ברשימת ה-Share בגוגל שיטס!")
+        except:
+            st.error("❌ לא הצלחנו אפילו לקרוא את המייל מה-Secrets. האם הקובץ secrets.toml תקין?")
+
         sh = get_worksheet()
         data = sh.get_all_records()
 
-        # סינון משמרות עתידיות
+        # אם הגענו לפה - החיבור הצליח!
+        st.success("✅ החיבור הצליח! הטבלה נטענה.")
+
+        # --- המשך הקוד הרגיל (סינון משמרות) ---
         future_shifts = []
-        
         for i, row in enumerate(data):
             date_str = str(row['Date'])
             if not date_str: continue
-
             try:
-                # המרת תאריך (יום/חודש/שנה)
                 shift_date = datetime.strptime(date_str, "%d/%m/%Y").date()
                 if shift_date >= date.today():
                     future_shifts.append((i, row, shift_date))
@@ -82,17 +90,14 @@ def main():
                 continue
 
         if not future_shifts:
-            st.info("כרגע לא פורסמו משמרות חדשות. שווה לחזור ולהתעדכן בקרוב! ❤️")
+            st.info("כרגע לא פורסמו משמרות חדשות.")
 
-        # הצגת המשמרות
         for original_index, row, shift_date in future_shifts:
             day_name = row['Day']
             time_range = row['Time']
             volunteer = str(row['Volunteer'])
-            
             date_display = shift_date.strftime("%d/%m/%Y")
             header_text = f"📅 {day_name} {date_display} | ⏰ {time_range}"
-            
             is_taken = len(volunteer) > 1
             
             if is_taken:
@@ -104,14 +109,11 @@ def main():
                 if is_taken:
                     st.write(f"**מאויש על ידי:** {volunteer}")
                 else:
-                    st.markdown("### הרשמה למשמרת 👇")
                     with st.form(key=f"form_{original_index}"):
                         name = st.text_input("שם מלא (חובה)")
                         phone = st.text_input("טלפון")
                         email = st.text_input("אימייל")
-                        
                         submit = st.form_submit_button("שריינו לי את המשמרת!")
-                        
                         if submit:
                             if name:
                                 register_volunteer(original_index, name, phone, email)
@@ -119,8 +121,6 @@ def main():
                                 st.error("חובה למלא שם מלא.")
 
     except Exception as e:
-        st.error("לא הצלחנו להתחבר לטבלה. אנא ודאו ששיתפתם את המייל של הרובוט בקובץ הגוגל שיטס.")
-        # st.error(e) 
-
-if __name__ == "__main__":
-    main()
+        # כאן אנחנו מדפיסים את השגיאה האמיתית
+        st.error("🚨 שגיאה טכנית בחיבור:")
+        st.code(e) # זה יראה לנו בדיוק מה הבעיה
