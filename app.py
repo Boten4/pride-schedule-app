@@ -28,7 +28,7 @@ def get_worksheet():
         scopes=scopes
     )
     client = gspread.authorize(credentials)
-    # הקישור לקובץ
+    # הקישור לקובץ שלך (עדכני אם צריך, כרגע זה מה ששלחת לי)
     return client.open_by_url("https://docs.google.com/spreadsheets/d/1UQQ5oqpMMiQPnJF0q2i-pUnl4jJxhpzJc2g-P2mxFCQ/edit?gid=0#gid=0").sheet1
 
 # --- 3. פונקציה לרישום ---
@@ -47,23 +47,22 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. המסך הראשי ---
 def main():
-    # --- אזור הלוגואים החדש ---
-    # יוצרים 2 עמודות כדי לשים את הלוגואים אחד ליד השני
+    # --- אזור הלוגואים (מוצג תמיד) ---
     col1, col2 = st.columns([1, 1])
     
     with col1:
+        # לוגו ארכיון (וודאי שהקובץ קיים ב-GitHub בשם archive_logo.png)
         try:
-            # מציג את הלוגו ברוחב מלא של העמודה (גדול!)
             st.image("archive_logo.png", use_container_width=True)
         except:
-            pass # אם לא נמצא, לא נורא
+            st.warning("חסר קובץ: archive_logo.png")
 
     with col2:
+        # לוגו דגל גאווה (וודאי שהקובץ קיים ב-GitHub בשם pride_logo.png)
         try:
-            # מציג את דגל הגאווה ברוחב מלא
             st.image("pride_logo.png", use_container_width=True)
         except:
-            pass
+            st.warning("חסר קובץ: pride_logo.png")
 
     st.write("---") # קו הפרדה
     
