@@ -4,7 +4,8 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, date
 
 # --- 1. הגדרות דף ---
-st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
+# שיניתי את האייקון בדפדפן לדגל החדש אם תרצי, או שתשאירי רגיל
+st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍⚧️", layout="centered")
 
 # --- עיצוב CSS ---
 st.markdown("""
@@ -15,6 +16,8 @@ st.markdown("""
     div[data-baseweb="input"] > div { flex-direction: row-reverse; }
     .stButton button { width: 100%; border-radius: 8px; }
     div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
+    /* הקטנת המרווח בין הכותרת לתמונה */
+    .block-container { padding-top: 1rem; }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -46,26 +49,29 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. המסך הראשי ---
 def main():
-    # --- תיקון שמות הקבצים לפי מה שמופיע ב-GitHub ---
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # השם המדויק כפי שמופיע אצלך: archive_logo.png.jpg
-        try:
-            st.image("archive_logo.png.jpg", use_container_width=True)
-        except:
-            st.warning("לא נמצא: archive_logo.png.jpg")
+    # --- חלק עליון: לוגו ארכיון לרוחב מלא ---
+    try:
+        # שם הקובץ כפי שהוא אצלך בגיטהאב
+        st.image("archive_logo.png.jpg", use_container_width=True) 
+    except:
+        st.warning("לא נמצא לוגו ארכיון (archive_logo.png.jpg)")
 
-    with col2:
-        # השם המדויק כפי שמופיע אצלך: progress-pride-flag.png
-        try:
-            st.image("progress-pride-flag.png", use_container_width=True)
-        except:
-            st.warning("לא נמצא: progress-pride-flag.png")
+    st.write("") # מרווח קטן
 
-    st.write("---") 
+    # --- חלק תחתון: כותרת + דגל פרוגרסיבי קטן ---
+    # יצרתי שתי עמודות: אחת לכותרת (רחבה) ואחת לדגל (צרה)
+    col_title, col_flag = st.columns([5, 1])
     
-    st.title("לוח משמרות 🏳️‍🌈")
+    with col_title:
+        st.title("לוח משמרות") # בלי אייקון
+        
+    with col_flag:
+        try:
+            # דגל פרוגרסיבי בקטן (רוחב 60 פיקסלים)
+            st.image("progress-pride-flag.png", width=60) 
+        except:
+            pass
+
     st.write("בחרו תאריך כדי לראות את המשמרות:")
     
     selected_date = st.date_input(
