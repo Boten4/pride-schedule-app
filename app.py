@@ -3,26 +3,18 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, date
 
-# --- 1. הגדרות דף (חייב להיות ראשון) ---
+# --- 1. הגדרות דף ---
 st.set_page_config(page_title="שיבוץ משמרות - ארכיון הגאווה", page_icon="🏳️‍🌈", layout="centered")
 
-# --- עיצוב CSS (סידור לימין) ---
+# --- עיצוב CSS ---
 st.markdown("""
 <style>
-    /* כיוון כללי לימין */
     .stApp { direction: rtl; text-align: right; }
-    
-    /* יישור טקסטים לימין */
     h1, h2, h3, p, div, label, span, button { text-align: right !important; }
-    
-    /* סידור תיבת התאריך */
     .stDateInput input { text-align: right !important; direction: rtl !important; }
     div[data-baseweb="input"] > div { flex-direction: row-reverse; }
-
-    /* כפתורים ומסגרות */
     .stButton button { width: 100%; border-radius: 8px; }
     div[data-testid="stExpander"] { border: 1px solid #ddd; border-radius: 10px; }
-    
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -30,7 +22,6 @@ st.markdown("""
 
 # --- 2. חיבור לגוגל שיטס ---
 def get_worksheet():
-    # פונקציה שמתחברת לגיליון
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     credentials = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
@@ -40,7 +31,7 @@ def get_worksheet():
     # הקישור לקובץ
     return client.open_by_url("https://docs.google.com/spreadsheets/d/1UQQ5oqpMMiQPnJF0q2i-pUnl4jJxhpzJc2g-P2mxFCQ/edit?gid=0#gid=0").sheet1
 
-# --- 3. פונקציה לרישום מתנדב ---
+# --- 3. פונקציה לרישום ---
 def register_volunteer(row_index, name, phone, email):
     try:
         sh = get_worksheet()
@@ -56,15 +47,29 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. המסך הראשי ---
 def main():
-    try:
-        st.image("logo.jpg", width=120)
-    except:
-        pass
-        
+    # --- אזור הלוגואים החדש ---
+    # יוצרים 2 עמודות כדי לשים את הלוגואים אחד ליד השני
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        try:
+            # מציג את הלוגו ברוחב מלא של העמודה (גדול!)
+            st.image("archive_logo.png", use_container_width=True)
+        except:
+            pass # אם לא נמצא, לא נורא
+
+    with col2:
+        try:
+            # מציג את דגל הגאווה ברוחב מלא
+            st.image("pride_logo.png", use_container_width=True)
+        except:
+            pass
+
+    st.write("---") # קו הפרדה
+    
     st.title("לוח משמרות 🏳️‍🌈")
     st.write("בחרו תאריך כדי לראות את המשמרות:")
     
-    # בחירת תאריך עם פורמט ישראלי
     selected_date = st.date_input(
         "📅 לחצו לבחירת תאריך",
         value=date.today(),
@@ -77,7 +82,6 @@ def main():
         data = sh.get_all_records()
         daily_shifts = []
         
-        # חיפוש משמרות לפי התאריך שנבחר
         for i, row in enumerate(data):
             date_str = str(row['Date'])
             if not date_str: continue
@@ -88,7 +92,6 @@ def main():
             except ValueError:
                 continue
 
-        # הצגת התוצאות
         if not daily_shifts:
             st.info(f"אין משמרות בתאריך {selected_date.strftime('%d/%m/%Y')}.")
         else:
@@ -115,7 +118,7 @@ def main():
                                     st.error("חובה שם מלא")
 
     except Exception as e:
-        st.error("שגיאה בחיבור. נסו לרענן את הדף.")
+        st.error("שגיאה בחיבור.")
 
 if __name__ == "__main__":
     main()
