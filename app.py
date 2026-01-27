@@ -28,7 +28,6 @@ def get_worksheet():
         scopes=scopes
     )
     client = gspread.authorize(credentials)
-    # הקישור לקובץ שלך (עדכני אם צריך, כרגע זה מה ששלחת לי)
     return client.open_by_url("https://docs.google.com/spreadsheets/d/1UQQ5oqpMMiQPnJF0q2i-pUnl4jJxhpzJc2g-P2mxFCQ/edit?gid=0#gid=0").sheet1
 
 # --- 3. פונקציה לרישום ---
@@ -47,24 +46,24 @@ def register_volunteer(row_index, name, phone, email):
 
 # --- 4. המסך הראשי ---
 def main():
-    # --- אזור הלוגואים (מוצג תמיד) ---
+    # --- תיקון שמות הקבצים לפי מה שמופיע ב-GitHub ---
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        # לוגו ארכיון (וודאי שהקובץ קיים ב-GitHub בשם archive_logo.png)
+        # השם המדויק כפי שמופיע אצלך: archive_logo.png.jpg
         try:
-            st.image("archive_logo.png", use_container_width=True)
+            st.image("archive_logo.png.jpg", use_container_width=True)
         except:
-            st.warning("חסר קובץ: archive_logo.png")
+            st.warning("לא נמצא: archive_logo.png.jpg")
 
     with col2:
-        # לוגו דגל גאווה (וודאי שהקובץ קיים ב-GitHub בשם pride_logo.png)
+        # השם המדויק כפי שמופיע אצלך: progress-pride-flag.png
         try:
-            st.image("pride_logo.png", use_container_width=True)
+            st.image("progress-pride-flag.png", use_container_width=True)
         except:
-            st.warning("חסר קובץ: pride_logo.png")
+            st.warning("לא נמצא: progress-pride-flag.png")
 
-    st.write("---") # קו הפרדה
+    st.write("---") 
     
     st.title("לוח משמרות 🏳️‍🌈")
     st.write("בחרו תאריך כדי לראות את המשמרות:")
